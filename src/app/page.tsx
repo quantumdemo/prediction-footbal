@@ -5,7 +5,7 @@ import MatchSearch from '@/components/MatchSearch';
 import PredictionLoading from '@/components/PredictionLoading';
 import PredictionResults from '@/components/PredictionResults';
 import ApiKeyModal from '@/components/ApiKeyModal';
-import { searchTeam, getFixtures, getStandings, getH2H, getTeamInjuries, getTeamLeagues } from '@/lib/api';
+import { searchTeam, getFixtures, getStandings, getH2H, getTeamInjuries, getTeamLeagues, getTeamForm, getTeamStatistics } from '@/lib/api';
 import { calculatePrediction } from '@/lib/predictor';
 import { MatchData, PredictionResult } from '@/types/football';
 
@@ -73,10 +73,19 @@ export default function Home() {
       const leagueId = fixture.league?.id || leagues[0]?.league?.id || 39;
       const season = leagues[0]?.seasons?.[0]?.year || new Date().getFullYear() - 1;
 
-      // 3. Get Standings
+      // 3. Get Detailed Standings & Stats
       setLoadingStep(3);
-      const standingsData = await getStandings(leagueId, season, apiKey);
+      const [standingsData, homeStandingsData, awayStandingsData, homeStats, awayStats] = await Promise.all([
+        getStandings(leagueId, season, apiKey, 'total'),
+        getStandings(leagueId, season, apiKey, 'home'),
+        getStandings(leagueId, season, apiKey, 'away'),
+        getTeamStatistics(homeTeam.id, leagueId, season, apiKey),
+        getTeamStatistics(awayTeam.id, leagueId, season, apiKey)
+      ]);
+
       const leagueStandings = standingsData[0]?.league?.standings[0] || [];
+      const homeStandings = homeStandingsData[0]?.league?.standings[0] || [];
+      const awayStandings = awayStandingsData[0]?.league?.standings[0] || [];
 
       const homeStanding = leagueStandings.find((s: any) => s.team.id === homeTeam.id) || {
         rank: 10, points: 0, form: 'DDDDD', all: { played: 0, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } }
@@ -85,12 +94,15 @@ export default function Home() {
         rank: 11, points: 0, form: 'DDDDD', all: { played: 0, win: 0, draw: 0, lose: 0, goals: { for: 0, against: 0 } }
       };
 
+      const homeStandingHome = homeStandings.find((s: any) => s.team.id === homeTeam.id) || homeStanding;
+      const awayStandingAway = awayStandings.find((s: any) => s.team.id === awayTeam.id) || awayStanding;
+
       // 4. Form & H2H
       setLoadingStep(4);
       const [h2hData, homeForm, awayForm] = await Promise.all([
         getH2H(homeTeam.id, awayTeam.id, apiKey),
-        import('@/lib/api').then(m => m.getTeamForm(homeTeam.id, apiKey)),
-        import('@/lib/api').then(m => m.getTeamForm(awayTeam.id, apiKey))
+        getTeamForm(homeTeam.id, apiKey),
+        getTeamForm(awayTeam.id, apiKey)
       ]);
 
       homeStanding.form = homeForm;
@@ -109,9 +121,13 @@ export default function Home() {
         fixture,
         homeStanding,
         awayStanding,
+        homeStandingHome,
+        awayStandingAway,
         h2h: h2hData,
         homeInjuries,
-        awayInjuries
+        awayInjuries,
+        homeStats,
+        awayStats
       };
 
       const result = calculatePrediction(fullMatchData);

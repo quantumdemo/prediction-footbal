@@ -8,6 +8,13 @@ async function fetchFootballData(endpoint: string, apiKey?: string, params: Reco
     headers['x-rapidapi-key'] = apiKey;
   }
 
+  // Simple in-memory cache to avoid redundant calls and rate limits
+  const cacheKey = url.toString() + (apiKey || '');
+  const cached = (global as any).apiCache?.[cacheKey];
+  if (cached && Date.now() - cached.timestamp < 300000) { // 5 min cache
+    return cached.data;
+  }
+
   const response = await fetch(url.toString(), { headers });
 
   if (!response.ok) {
@@ -25,6 +32,10 @@ async function fetchFootballData(endpoint: string, apiKey?: string, params: Reco
   if (data.message && (data.message.includes('API key') || data.message.includes('not subscribed'))) {
       throw new Error('Invalid API Key: Please check your RapidAPI key and subscription.');
   }
+
+  // Store in cache
+  if (!(global as any).apiCache) (global as any).apiCache = {};
+  (global as any).apiCache[cacheKey] = { data, timestamp: Date.now() };
 
   return data;
 }
@@ -94,10 +105,11 @@ export async function getTeamLeagues(teamId: number, apiKey?: string) {
   }];
 }
 
-export async function getStandings(leagueId: number, season: number, apiKey?: string) {
+export async function getStandings(leagueId: number, season: number, apiKey?: string, type: 'total' | 'home' | 'away' = 'total') {
   const data = await fetchFootballData('tournaments/get-standings', apiKey, {
     tournamentId: leagueId.toString(),
-    seasonId: season.toString()
+    seasonId: season.toString(),
+    type
   });
 
   const standings = data.standings || [];
@@ -129,6 +141,24 @@ export async function getStandings(leagueId: number, season: number, apiKey?: st
       ]
     }
   }];
+}
+
+export async function getTeamStatistics(teamId: number, leagueId: number, season: number, apiKey?: string) {
+    const data = await fetchFootballData('teams/get-statistics', apiKey, {
+        teamId: teamId.toString(),
+        tournamentId: leagueId.toString(),
+        seasonId: season.toString()
+    });
+    const stats = data.statistics;
+    return {
+        goalsScored: stats.goalsScored || 0,
+        goalsConceded: stats.goalsConceded || 0,
+        bigChances: stats.bigChances || 0,
+        bigChancesCreated: stats.bigChancesCreated || 0,
+        shotsOnTarget: stats.shotsOnTarget || 0,
+        averageBallPossession: stats.averageBallPossession || 0,
+        corners: stats.corners || 0
+    };
 }
 
 export async function getH2H(homeId: number, awayId: number, apiKey?: string) {
