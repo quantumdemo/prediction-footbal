@@ -149,7 +149,7 @@ export async function getTeamStatistics(teamId: number, leagueId: number, season
         tournamentId: leagueId.toString(),
         seasonId: season.toString()
     });
-    const stats = data.statistics;
+    const stats = data.statistics || {};
     return {
         goalsScored: stats.goalsScored || 0,
         goalsConceded: stats.goalsConceded || 0,
