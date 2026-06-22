@@ -1,7 +1,6 @@
 'use client';
 
 import { MatchData, PredictionResult } from '../types/football';
-import Image from 'next/image';
 
 interface PredictionResultsProps {
   data: MatchData;

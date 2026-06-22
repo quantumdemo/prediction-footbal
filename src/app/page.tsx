@@ -5,7 +5,7 @@ import MatchSearch from '@/components/MatchSearch';
 import PredictionLoading from '@/components/PredictionLoading';
 import PredictionResults from '@/components/PredictionResults';
 import ApiKeyModal from '@/components/ApiKeyModal';
-import { searchTeam, getFixtures, getStandings, getH2H, getTeamInjuries } from '@/lib/api';
+import { searchTeam, getFixtures, getStandings, getH2H, getTeamInjuries, getTeamLeagues } from '@/lib/api';
 import { calculatePrediction } from '@/lib/predictor';
 import { MatchData, PredictionResult } from '@/types/football';
 
@@ -51,18 +51,22 @@ export default function Home() {
       const homeTeam = teamAResults[0].team;
       const awayTeam = teamBResults[0].team;
 
-      // 2. Get Fixtures
+      // 2. Get Fixtures & League
       setLoadingStep(2);
-      const fixtures = await getFixtures(homeTeam.id, awayTeam.id, apiKey);
+      const [fixtures, leagues] = await Promise.all([
+        getFixtures(homeTeam.id, awayTeam.id, apiKey),
+        getTeamLeagues(homeTeam.id, apiKey)
+      ]);
+
       const fixture = fixtures[0] || {
         id: 0,
         date: new Date().toISOString(),
-        league: teamAResults[0].venue ? { id: 39, name: 'Premier League', logo: '' } : { id: 39, name: 'Premier League', logo: '' }, // Fallback
+        league: leagues[0]?.league || { id: 39, name: 'Premier League', logo: '' },
         teams: { home: homeTeam, away: awayTeam }
       };
 
-      const leagueId = fixture.league?.id || 39; // Default to PL if not found
-      const season = 2024; // Should ideally be dynamic
+      const leagueId = fixture.league?.id || leagues[0]?.league?.id || 39;
+      const season = leagues[0]?.seasons?.[0]?.year || new Date().getFullYear() - 1;
 
       // 3. Get Standings
       setLoadingStep(3);

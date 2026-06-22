@@ -39,8 +39,10 @@ export default function ApiKeyModal({ onKeySubmit }: ApiKeyModalProps) {
 
         <ol className="text-sm text-gray-300 space-y-3 mb-8 list-decimal ml-4">
           <li>Sign up at <a href="https://rapidapi.com/api-sports/api/api-football" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">RapidAPI</a></li>
-          <li>Subscribe to the Free tier</li>
-          <li>Copy your "X-RapidAPI-Key" and paste it below</li>
+          <li>Click the <strong>"Subscribe to Test"</strong> button and select the <strong>Free</strong> tier (100 requests/day).</li>
+          <li>Go to the <strong>"Endpoints"</strong> tab.</li>
+          <li>In the "Header Parameters" section on the right, copy the value of <strong>"X-RapidAPI-Key"</strong>.</li>
+          <li>Paste it below to start predicting.</li>
         </ol>
 
         <form onSubmit={handleSubmit} className="space-y-4">

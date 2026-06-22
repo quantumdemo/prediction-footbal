@@ -13,12 +13,22 @@ async function fetchFootballData(endpoint: string, apiKey: string, params: Recor
   });
 
   if (!response.ok) {
+    if (response.status === 403) {
+      throw new Error('API Key error: Please ensure you are subscribed to the FREE tier of API-Football on RapidAPI.');
+    }
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded: You have reached the 100 requests/day limit on the free tier.');
+    }
     throw new Error(`API error: ${response.statusText}`);
   }
 
   const data = await response.json();
   if (data.errors && Object.keys(data.errors).length > 0) {
-    throw new Error(`API error: ${JSON.stringify(data.errors)}`);
+    const errorMsg = typeof data.errors === 'string' ? data.errors : JSON.stringify(data.errors);
+    if (errorMsg.includes('token') || errorMsg.includes('key')) {
+      throw new Error('Invalid API Key: Please check your RapidAPI key in settings.');
+    }
+    throw new Error(`API error: ${errorMsg}`);
   }
 
   return data.response;
@@ -32,8 +42,7 @@ export async function searchTeam(name: string, apiKey: string) {
 export async function getFixtures(homeId: number, awayId: number, apiKey: string) {
   // Try to find upcoming fixture
   const fixtures = await fetchFootballData('fixtures', apiKey, {
-    last: '10', // Get some previous fixtures too just in case
-    next: '10',
+    next: '5',
     team: homeId.toString(),
   });
 
@@ -42,6 +51,10 @@ export async function getFixtures(homeId: number, awayId: number, apiKey: string
     (f.teams.home.id === homeId && f.teams.away.id === awayId) ||
     (f.teams.home.id === awayId && f.teams.away.id === homeId)
   );
+}
+
+export async function getTeamLeagues(teamId: number, apiKey: string) {
+  return await fetchFootballData('leagues', apiKey, { team: teamId.toString(), current: 'true' });
 }
 
 export async function getStandings(leagueId: number, season: number, apiKey: string) {
