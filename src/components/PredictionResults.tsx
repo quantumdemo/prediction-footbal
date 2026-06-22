@@ -92,17 +92,27 @@ export default function PredictionResults({ data, prediction }: PredictionResult
           </div>
         </div>
 
-        {/* Standings */}
+        {/* Contextual Standings */}
         <div className="bg-card-bg border border-border-custom rounded-2xl p-6">
-          <h4 className="text-lg font-bold mb-4 border-b border-border-custom pb-2">League Standing</h4>
+          <h4 className="text-lg font-bold mb-4 border-b border-border-custom pb-2">Contextual Performance</h4>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">{data.homeTeam.name}</span>
-              <span className="font-bold">Pos: {data.homeStanding.rank} ({data.homeStanding.points} pts)</span>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-gray-400">{data.homeTeam.name} (Home Record)</span>
+                <span className="font-bold text-accent">#{data.homeStandingHome.rank}</span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {data.homeStandingHome.all.win}W {data.homeStandingHome.all.draw}D {data.homeStandingHome.all.lose}L | {data.homeStandingHome.points} pts
+              </p>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-400">{data.awayTeam.name}</span>
-              <span className="font-bold">Pos: {data.awayStanding.rank} ({data.awayStanding.points} pts)</span>
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-gray-400">{data.awayTeam.name} (Away Record)</span>
+                <span className="font-bold text-accent">#{data.awayStandingAway.rank}</span>
+              </div>
+              <p className="text-xs text-gray-500">
+                {data.awayStandingAway.all.win}W {data.awayStandingAway.all.draw}D {data.awayStandingAway.all.lose}L | {data.awayStandingAway.points} pts
+              </p>
             </div>
           </div>
         </div>
@@ -123,26 +133,32 @@ export default function PredictionResults({ data, prediction }: PredictionResult
           </div>
         </div>
 
-        {/* Injuries */}
+        {/* Efficiency Stats */}
         <div className="bg-card-bg border border-border-custom rounded-2xl p-6">
-          <h4 className="text-lg font-bold mb-4 border-b border-border-custom pb-2">Availability</h4>
+          <h4 className="text-lg font-bold mb-4 border-b border-border-custom pb-2">Attacking Efficiency</h4>
           <div className="space-y-4">
-            <div>
-              <p className="text-xs text-gray-500 uppercase mb-1">{data.homeTeam.name}</p>
-              <p className="text-sm">
-                {data.homeInjuries.length > 0
-                  ? `${data.homeInjuries.length} players sidelined`
-                  : 'Full squad available'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 uppercase mb-1">{data.awayTeam.name}</p>
-              <p className="text-sm">
-                {data.awayInjuries.length > 0
-                  ? `${data.awayInjuries.length} players sidelined`
-                  : 'Full squad available'}
-              </p>
-            </div>
+            {data.homeStats && (
+              <div>
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>{data.homeTeam.name} Big Chances</span>
+                  <span>{data.homeStats.bigChancesCreated} created</span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent" style={{ width: `${Math.min(100, (data.homeStats.bigChancesCreated / (data.homeStanding.all.played || 1)) * 20)}%` }}></div>
+                </div>
+              </div>
+            )}
+            {data.awayStats && (
+              <div>
+                <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <span>{data.awayTeam.name} Big Chances</span>
+                  <span>{data.awayStats.bigChancesCreated} created</span>
+                </div>
+                <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-accent" style={{ width: `${Math.min(100, (data.awayStats.bigChancesCreated / (data.awayStanding.all.played || 1)) * 20)}%` }}></div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

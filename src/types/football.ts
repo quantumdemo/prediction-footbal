@@ -66,15 +66,29 @@ export interface Injury {
   };
 }
 
+export interface TeamStats {
+  goalsScored: number;
+  goalsConceded: number;
+  bigChances: number;
+  bigChancesCreated: number;
+  shotsOnTarget: number;
+  averageBallPossession: number;
+  corners: number;
+}
+
 export interface MatchData {
   homeTeam: Team;
   awayTeam: Team;
   fixture: Fixture;
   homeStanding: Standing;
   awayStanding: Standing;
+  homeStandingHome: Standing;
+  awayStandingAway: Standing;
   h2h: H2H[];
   homeInjuries: Injury[];
   awayInjuries: Injury[];
+  homeStats?: TeamStats;
+  awayStats?: TeamStats;
 }
 
 export type PredictionOutcome = 'Home Win' | 'Away Win' | 'Draw' | 'Home or Draw (1X)' | 'Draw or Away (X2)' | 'Home or Away (12)';

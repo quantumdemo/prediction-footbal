@@ -6,99 +6,102 @@ export function calculatePrediction(data: MatchData): PredictionResult {
 
   const reasoning: string[] = [];
 
-  // 1. Home advantage (10%) - base 10 points
-  homeScore += 10;
-  reasoning.push(`${data.homeTeam.name} has the home advantage.`);
+  // 1. Contextual League Standing (Home vs Away performance) - 15%
+  const homeHomePointsPerMatch = data.homeStandingHome.points / (data.homeStandingHome.all.played || 1);
+  const awayAwayPointsPerMatch = data.awayStandingAway.points / (data.awayStandingAway.all.played || 1);
 
-  // 2. Recent form (25%) - max 25 points
-  const homeForm = data.homeStanding.form || 'DDDDD';
-  const awayForm = data.awayStanding.form || 'DDDDD';
+  homeScore += homeHomePointsPerMatch * 10;
+  awayScore += awayAwayPointsPerMatch * 10;
 
+  if (homeHomePointsPerMatch > awayAwayPointsPerMatch + 0.5) {
+    reasoning.push(`${data.homeTeam.name} has a significantly stronger home record than ${data.awayTeam.name}'s away form.`);
+  } else if (awayAwayPointsPerMatch > homeHomePointsPerMatch + 0.5) {
+    reasoning.push(`${data.awayTeam.name} is exceptionally dangerous on the road.`);
+  }
+
+  // 2. Recent Form (Momentum) - 25%
   const calculateFormPoints = (form: string) => {
     let points = 0;
     const last5 = form.slice(-5).split('');
-    last5.forEach(char => {
-      if (char === 'W') points += 5;
-      if (char === 'D') points += 2;
+    last5.forEach((char, index) => {
+      const recencyMultiplier = (index + 1) / 5;
+      if (char === 'W') points += 5 * recencyMultiplier;
+      if (char === 'D') points += 2 * recencyMultiplier;
     });
     return points;
   };
 
-  const homeFormPoints = calculateFormPoints(homeForm);
-  const awayFormPoints = calculateFormPoints(awayForm);
-  homeScore += homeFormPoints;
-  awayScore += awayFormPoints;
+  const homeFormPoints = calculateFormPoints(data.homeStanding.form || 'DDDDD');
+  const awayFormPoints = calculateFormPoints(data.awayStanding.form || 'DDDDD');
 
-  if (homeFormPoints > awayFormPoints) {
-    reasoning.push(`${data.homeTeam.name} has better recent form than ${data.awayTeam.name}.`);
-  } else if (awayFormPoints > homeFormPoints) {
-    reasoning.push(`${data.awayTeam.name} is in better form lately.`);
+  homeScore += (homeFormPoints / 9) * 25;
+  awayScore += (awayFormPoints / 9) * 25;
+
+  if (homeFormPoints > awayFormPoints + 2) {
+    reasoning.push(`${data.homeTeam.name} enters this match with superior momentum.`);
   }
 
-  // 3. Head-to-head record (20%) - max 20 points
+  // 3. Head-to-Head (Psychological edge) - 15%
   let homeH2HWins = 0;
   let awayH2HWins = 0;
-  data.h2h.slice(0, 5).forEach(match => {
-    if (match.goals.home > match.goals.away) homeH2HWins++;
-    else if (match.goals.away > match.goals.home) awayH2HWins++;
+
+  data.h2h.slice(0, 5).forEach((match, index) => {
+    const recencyWeight = (5 - index) / 5;
+    const homeWon = match.goals.home > match.goals.away;
+    const awayWon = match.goals.away > match.goals.home;
+
+    if (homeWon) {
+        if (match.teams.home.id === data.homeTeam.id) homeH2HWins += 3 * recencyWeight;
+        else if (match.teams.home.id === data.awayTeam.id) awayH2HWins += 3 * recencyWeight;
+    } else if (awayWon) {
+        if (match.teams.away.id === data.homeTeam.id) homeH2HWins += 3 * recencyWeight;
+        else if (match.teams.away.id === data.awayTeam.id) awayH2HWins += 3 * recencyWeight;
+    }
   });
 
-  homeScore += (homeH2HWins * 4);
-  awayScore += (awayH2HWins * 4);
+  homeScore += (homeH2HWins / 15) * 15;
+  awayScore += (awayH2HWins / 15) * 15;
 
-  if (homeH2HWins > awayH2HWins) {
-    reasoning.push(`${data.homeTeam.name} has historically performed better in this head-to-head matchup.`);
+  // 4. Efficiency Stats (xG, Big Chances, Defensive Solidity) - 30%
+  if (data.homeStats && data.awayStats) {
+    const homeEfficiency = (data.homeStats.bigChancesCreated / (data.homeStanding.all.played || 1)) * 5;
+    const awayEfficiency = (data.awayStats.bigChancesCreated / (data.awayStanding.all.played || 1)) * 5;
+
+    const homeDefensive = (1 - (data.homeStats.goalsConceded / (data.homeStats.goalsScored + data.homeStats.goalsConceded || 1))) * 15;
+    const awayDefensive = (1 - (data.awayStats.goalsConceded / (data.awayStats.goalsScored + data.awayStats.goalsConceded || 1))) * 15;
+
+    homeScore += homeEfficiency + homeDefensive;
+    awayScore += awayEfficiency + awayDefensive;
+
+    if (homeEfficiency > awayEfficiency + 2) {
+      reasoning.push(`${data.homeTeam.name} is creating higher quality scoring opportunities.`);
+    }
   }
 
-  // 4. Goals scored/conceded ratio (20%) - max 20 points
-  const homeGoalRatio = data.homeStanding.all.goals.for / (data.homeStanding.all.goals.against || 1);
-  const awayGoalRatio = data.awayStanding.all.goals.for / (data.awayStanding.all.goals.against || 1);
-
-  const homeGoalPoints = Math.min(20, homeGoalRatio * 5);
-  const awayGoalPoints = Math.min(20, awayGoalRatio * 5);
-  homeScore += homeGoalPoints;
-  awayScore += awayGoalPoints;
-
-  // 5. Injury impact (15%) - max 15 points
-  // Start with 15 and subtract for each injury
-  let homeInjuryPenalty = Math.min(15, data.homeInjuries.length * 3);
-  let awayInjuryPenalty = Math.min(15, data.awayInjuries.length * 3);
-
-  homeScore += (15 - homeInjuryPenalty);
-  awayScore += (15 - awayInjuryPenalty);
-
-  if (data.homeInjuries.length > data.awayInjuries.length + 2) {
-    reasoning.push(`${data.homeTeam.name} is missing several key players due to injury.`);
-  } else if (data.awayInjuries.length > data.homeInjuries.length + 2) {
-    reasoning.push(`${data.awayTeam.name} has significant injury concerns.`);
-  }
-
-  // 6. League position difference (10%) - max 10 points
-  const totalTeams = 20; // Assume 20 for normalization
-  const homePosPoints = ((totalTeams - data.homeStanding.rank) / totalTeams) * 10;
-  const awayPosPoints = ((totalTeams - data.awayStanding.rank) / totalTeams) * 10;
-
-  homeScore += homePosPoints;
-  awayScore += awayPosPoints;
+  // 5. Availability & Injuries - 15%
+  const homeAvailability = Math.max(0, 15 - (data.homeInjuries.length * 3));
+  const awayAvailability = Math.max(0, 15 - (data.awayInjuries.length * 3));
+  homeScore += homeAvailability;
+  awayScore += awayAvailability;
 
   // Final outcome logic
   let outcome: PredictionOutcome;
   const diff = homeScore - awayScore;
 
-  if (diff > 15) outcome = 'Home Win';
-  else if (diff < -15) outcome = 'Away Win';
-  else if (diff > 5) outcome = 'Home or Draw (1X)';
-  else if (diff < -5) outcome = 'Draw or Away (X2)';
-  else if (Math.abs(diff) <= 5) outcome = 'Draw';
-  else outcome = 'Home or Away (12)';
+  if (diff > 12) outcome = 'Home Win';
+  else if (diff < -12) outcome = 'Away Win';
+  else if (diff > 4) outcome = 'Home or Draw (1X)';
+  else if (diff < -4) outcome = 'Draw or Away (X2)';
+  else outcome = 'Draw';
 
-  // Confidence calculation (0-100)
-  const confidence = Math.min(95, Math.max(50, 50 + Math.abs(diff)));
+  const baseConfidence = 50;
+  const spread = Math.abs(diff);
+  const confidence = Math.min(92, Math.max(45, baseConfidence + spread * 2));
 
   return {
     outcome,
     confidence: Math.round(confidence),
-    reasoning: reasoning.join(' '),
+    reasoning: reasoning.length > 0 ? reasoning.join(' ') : "A closely contested match with balanced statistical indicators.",
     scores: {
       home: Math.round(homeScore),
       away: Math.round(awayScore)
