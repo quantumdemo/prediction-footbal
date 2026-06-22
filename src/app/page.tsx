@@ -20,7 +20,7 @@ export default function Home() {
 
   useEffect(() => {
     // Check if server has env key
-    fetch('/api/football?endpoint=timezone')
+    fetch('/api/football?endpoint=teams/search&name=Chelsea')
       .then(res => {
         if (res.status !== 403 && res.ok) {
           setHasEnvKey(true);
@@ -87,7 +87,14 @@ export default function Home() {
 
       // 4. Form & H2H
       setLoadingStep(4);
-      const h2hData = await getH2H(homeTeam.id, awayTeam.id, apiKey);
+      const [h2hData, homeForm, awayForm] = await Promise.all([
+        getH2H(homeTeam.id, awayTeam.id, apiKey),
+        import('@/lib/api').then(m => m.getTeamForm(homeTeam.id, apiKey)),
+        import('@/lib/api').then(m => m.getTeamForm(awayTeam.id, apiKey))
+      ]);
+
+      homeStanding.form = homeForm;
+      awayStanding.form = awayForm;
 
       // 5. Injuries
       setLoadingStep(5);

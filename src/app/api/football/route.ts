@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-const RAPID_API_HOST = 'api-football-v1.p.rapidapi.com';
+const RAPID_API_HOST = 'sofascore.p.rapidapi.com';
 const RAPID_API_KEY = process.env.RAPIDAPI_KEY;
 
 export async function GET(request: Request) {
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   }
 
   // Build the RapidAPI URL
-  const url = new URL(`https://${RAPID_API_HOST}/v3/${endpoint}`);
+  const url = new URL(`https://${RAPID_API_HOST}/${endpoint}`);
   searchParams.forEach((value, key) => {
     if (key !== 'endpoint') {
       url.searchParams.append(key, value);
