@@ -11,6 +11,7 @@ import { MatchData, PredictionResult } from '@/types/football';
 
 export default function Home() {
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [hasEnvKey, setHasEnvKey] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -18,10 +19,14 @@ export default function Home() {
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
 
   useEffect(() => {
-    const savedKey = localStorage.getItem('rapidapi_key');
-    if (savedKey) {
-      setApiKey(savedKey);
-    }
+    // Check if server has env key
+    fetch('/api/football?endpoint=timezone')
+      .then(res => {
+        if (res.status !== 403 && res.ok) {
+          setHasEnvKey(true);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const handleSearch = async (query: string) => {
@@ -118,7 +123,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen p-4 md:p-8 lg:p-12 max-w-7xl mx-auto">
-      <ApiKeyModal onKeySubmit={setApiKey} />
+      <ApiKeyModal onKeySubmit={setApiKey} hasEnvKey={hasEnvKey} />
 
       {/* Header */}
       <header className="text-center mb-16 space-y-4">

@@ -4,18 +4,27 @@ import { useState, useEffect } from 'react';
 
 interface ApiKeyModalProps {
   onKeySubmit: (key: string) => void;
+  hasEnvKey: boolean;
 }
 
-export default function ApiKeyModal({ onKeySubmit }: ApiKeyModalProps) {
+export default function ApiKeyModal({ onKeySubmit, hasEnvKey }: ApiKeyModalProps) {
   const [key, setKey] = useState('');
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (hasEnvKey) {
+      setIsOpen(false);
+      onKeySubmit('ENV_KEY'); // Signal that we have a key
+      return;
+    }
+
     const savedKey = localStorage.getItem('rapidapi_key');
     if (!savedKey) {
       setIsOpen(true);
+    } else {
+      onKeySubmit(savedKey);
     }
-  }, []);
+  }, [hasEnvKey, onKeySubmit]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +43,6 @@ export default function ApiKeyModal({ onKeySubmit }: ApiKeyModalProps) {
         <h2 className="text-2xl font-bold mb-4">Welcome to PredictIQ</h2>
         <p className="text-gray-400 mb-6 leading-relaxed">
           To provide real-time football data, this app requires an API key from API-Football.
-          It's free (100 requests/day).
         </p>
 
         <ol className="text-sm text-gray-300 space-y-3 mb-8 list-decimal ml-4">
